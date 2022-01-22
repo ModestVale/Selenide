@@ -8,6 +8,8 @@ import org.openqa.selenium.Keys;
 
 import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 import static com.codeborne.selenide.Selenide.*;
@@ -18,10 +20,7 @@ public class AppCardDeliveryTest {
     public void shouldCreateOrder() {
         $("[data-test-id='city'] input").setValue("Уфа");
 
-        Date dateNow = new Date();
-        Date futureDate = DateUtils.addDays(dateNow, 5);
-        SimpleDateFormat formatForDateNow = new SimpleDateFormat("dd.MM.yyyy");
-        String dateForInput = formatForDateNow.format(futureDate);
+        String dateForInput = generateDate(5, "dd.MM.yyyy");
         SelenideElement dateField = $("[data-test-id='date'] input");
         dateField.sendKeys(Keys.CONTROL + "a");
         dateField.sendKeys(Keys.DELETE);
@@ -33,10 +32,9 @@ public class AppCardDeliveryTest {
         $$("button[type='button']")
                 .findBy(Condition.text("Забронировать"))
                 .click();
-        $("fieldset").shouldHave(Condition.attribute("disabled"), Duration.ofSeconds(2));
-        $("fieldset").shouldNotHave(Condition.attribute("disabled"), Duration.ofSeconds(15));
+
         $("[data-test-id='notification']")
-                .shouldBe(Condition.visible, Duration.ofSeconds(5))
+                .shouldBe(Condition.visible, Duration.ofSeconds(15))
                 .shouldHave(Condition.text("Успешно!\nВстреча успешно забронирована на " + dateForInput));
 
     }
@@ -50,37 +48,29 @@ public class AppCardDeliveryTest {
     public void shouldCreateOrderWithExtendedControls() {
 
         SelenideElement cityField = $("[data-test-id='city'] input");
-        cityField.sendKeys("С");
-        cityField.sendKeys("а");
+        cityField.sendKeys("Са");
         $(".input__popup").shouldBe(Condition.visible, Duration.ofSeconds(5));
         ElementsCollection cityMenuItems = $$(".menu-item");
         assertEquals(18, cityMenuItems.size());
 
-        cityMenuItems.get(7).click();
+        cityMenuItems
+                .findBy(Condition.text("Самара"))
+                .click();
 
         $("[data-test-id='date'] input").click();
 
         $(".calendar")
                 .shouldBe(Condition.visible, Duration.ofSeconds(2));
 
-        Date dateNow = new Date();
-        Date futureDate = DateUtils.addWeeks(dateNow, 1);
-        futureDate = DateUtils.setHours(futureDate, 0);
-        futureDate = DateUtils.setMinutes(futureDate, 0);
-        futureDate = DateUtils.setSeconds(futureDate, 0);
-        futureDate = DateUtils.setMilliseconds(futureDate, 0);
-        SimpleDateFormat formatForDateNow = new SimpleDateFormat("dd.MM.yyyy");
-        String dateForInput = formatForDateNow.format(futureDate);
-
-        long futureDateUnixTime = futureDate.getTime();
-        String dayButtonSelector = "[data-day='" + futureDateUnixTime + "']";
-        SelenideElement dayElement = $(dayButtonSelector);
-        if (!dayElement.exists()) {
+        int daysToAdd = 7;
+        String defaultMonth = generateDate(3, "MM");
+        String planningMonth = generateDate(daysToAdd, "MM");
+        String planningDay = generateDate(daysToAdd, "d");
+        String dateForInput = generateDate(daysToAdd, "dd.MM.yyyy");
+        if (!defaultMonth.equals(planningMonth)) {
             $("[data-step='1']").click();
-            dayElement = $(dayButtonSelector);
         }
-
-        dayElement.click();
+        $$("td.calendar__day").find(Condition.exactText(planningDay)).click();
 
         $("[data-test-id='name'] input").setValue("Петров Игорь");
         $("[data-test-id='phone'] input").setValue("+79226584321");
@@ -88,10 +78,13 @@ public class AppCardDeliveryTest {
         $$("button[type='button']")
                 .findBy(Condition.text("Забронировать"))
                 .click();
-        $("fieldset").shouldHave(Condition.attribute("disabled"), Duration.ofSeconds(2));
-        $("fieldset").shouldNotHave(Condition.attribute("disabled"), Duration.ofSeconds(15));
+
         $("[data-test-id='notification']")
-                .shouldBe(Condition.visible, Duration.ofSeconds(5))
+                .shouldBe(Condition.visible, Duration.ofSeconds(15))
                 .shouldHave(Condition.text("Успешно!\nВстреча успешно забронирована на " + dateForInput));
+    }
+
+    private String generateDate(int days, String dateFormat) {
+        return LocalDate.now().plusDays(days).format(DateTimeFormatter.ofPattern(dateFormat));
     }
 }
